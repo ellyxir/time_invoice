@@ -16,15 +16,20 @@
           lib = pkgs.lib;
           inherit beamPackages;
         };
-      in {
-        packages.default = beamPackages.mixRelease {
+
+        release = beamPackages.mixRelease {
           pname = "time_invoice";
           version = "0.1.0";
           src = ./.;
           mixNixDeps = deps;
-
           mixEnv = "prod";
         };
+      in {
+        # Wrap to only expose bin/ti, avoiding conflicts with other elixir releases
+        packages.default = pkgs.runCommand "ti" { } ''
+          mkdir -p $out/bin
+          ln -s ${release}/bin/ti $out/bin/ti
+        '';
 
         devShells.default = pkgs.mkShell {
           buildInputs = [
