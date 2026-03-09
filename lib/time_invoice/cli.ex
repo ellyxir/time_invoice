@@ -5,6 +5,10 @@ defmodule TimeInvoice.CLI do
   Parses command-line arguments and orchestrates the invoice generation
   pipeline: read stdin -> parse JSON -> load config -> extract project ->
   format dates -> render template -> output markdown.
+
+  Configuration is loaded from `~/.config/time_invoice/config.exs` (or
+  `$XDG_CONFIG_HOME/time_invoice/config.exs` if set). See `TimeInvoice.Config`
+  for the expected format.
   """
 
   alias TimeInvoice.Config
