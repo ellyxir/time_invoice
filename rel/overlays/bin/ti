@@ -1,0 +1,19 @@
+#!/bin/sh
+set -e
+
+SELF=$(readlink "$0" || true)
+if [ -z "$SELF" ]; then SELF="$0"; fi
+RELEASE_ROOT="$(cd "$(dirname "$SELF")/.." && pwd -P)"
+
+# Pass args via environment variable since eval doesn't handle args well
+export TI_ARGV=""
+for arg in "$@"; do
+  if [ -z "$TI_ARGV" ]; then
+    TI_ARGV="$arg"
+  else
+    TI_ARGV="$TI_ARGV
+$arg"
+  fi
+done
+
+exec "$RELEASE_ROOT/bin/time_invoice" eval 'System.get_env("TI_ARGV", "") |> String.split("\n", trim: true) |> TimeInvoice.CLI.main()'
