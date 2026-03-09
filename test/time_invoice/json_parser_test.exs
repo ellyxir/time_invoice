@@ -240,6 +240,79 @@ defmodule TimeInvoice.JsonParserTest do
     end
   end
 
+  describe "extract_project/2" do
+    test "extracts project data with date range" do
+      report = %{
+        start_date: ~D[2026-01-01],
+        end_date: ~D[2026-01-31],
+        projects: %{
+          "acme" => %{
+            days: [%{date: ~D[2026-01-02], hours: 3.5}],
+            total_hours: 3.5
+          }
+        }
+      }
+
+      assert {:ok, extracted} = JsonParser.extract_project(report, "acme")
+      assert extracted.project == "acme"
+      assert extracted.start_date == ~D[2026-01-01]
+      assert extracted.end_date == ~D[2026-01-31]
+      assert extracted.days == [%{date: ~D[2026-01-02], hours: 3.5}]
+      assert extracted.total_hours == 3.5
+    end
+
+    test "extracts only the requested project from multiple" do
+      report = %{
+        start_date: ~D[2026-01-01],
+        end_date: ~D[2026-01-31],
+        projects: %{
+          "acme" => %{
+            days: [%{date: ~D[2026-01-02], hours: 3.5}],
+            total_hours: 3.5
+          },
+          "widgets" => %{
+            days: [%{date: ~D[2026-01-05], hours: 8.0}],
+            total_hours: 8.0
+          }
+        }
+      }
+
+      assert {:ok, extracted} = JsonParser.extract_project(report, "acme")
+      assert extracted.project == "acme"
+      assert extracted.days == [%{date: ~D[2026-01-02], hours: 3.5}]
+      assert extracted.total_hours == 3.5
+      refute Map.has_key?(extracted, "widgets")
+    end
+
+    test "returns error when project not found" do
+      report = %{
+        start_date: ~D[2026-01-01],
+        end_date: ~D[2026-01-31],
+        projects: %{
+          "acme" => %{days: [], total_hours: 0},
+          "widgets" => %{days: [], total_hours: 0}
+        }
+      }
+
+      assert {:error, {:project_not_found, "unknown", available}} =
+               JsonParser.extract_project(report, "unknown")
+
+      assert "acme" in available
+      assert "widgets" in available
+    end
+
+    test "returns error with empty list when no projects exist" do
+      report = %{
+        start_date: ~D[2026-01-01],
+        end_date: ~D[2026-01-31],
+        projects: %{}
+      }
+
+      assert {:error, {:project_not_found, "acme", []}} =
+               JsonParser.extract_project(report, "acme")
+    end
+  end
+
   describe "parse/1 edge cases" do
     test "parses empty projects map" do
       json = ~s({"start_date": "2026-01-01", "end_date": "2026-01-31", "projects": {}})
