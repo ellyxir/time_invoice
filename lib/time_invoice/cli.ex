@@ -175,4 +175,26 @@ defmodule TimeInvoice.CLI do
   def exit_code({:project_not_in_json, _, _}), do: 2
   def exit_code({:template_not_found, _}), do: 3
   def exit_code({:invalid_json, _}), do: 4
+
+  @doc """
+  Main entry point for the CLI.
+
+  Reads JSON from stdin, runs the pipeline, outputs to stdout on success
+  or stderr on error, and halts with the appropriate exit code.
+  """
+  @spec main([String.t()]) :: no_return()
+  def main(args) do
+    json_input = IO.read(:stdio, :eof)
+    config_path = Config.config_path()
+
+    case run(args, json_input, config_path) do
+      {:ok, output} ->
+        IO.write(output)
+        System.halt(0)
+
+      {:error, error} ->
+        IO.puts(:stderr, format_error(error))
+        System.halt(exit_code(error))
+    end
+  end
 end
