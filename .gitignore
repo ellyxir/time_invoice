@@ -21,3 +21,6 @@ time_invoice-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+# Nix build result symlink
+/result
