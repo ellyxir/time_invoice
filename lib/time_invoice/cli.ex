@@ -18,6 +18,7 @@ defmodule TimeInvoice.CLI do
           | {:project_not_in_config, String.t(), [String.t()]}
           | {:project_not_in_json, String.t(), [String.t()]}
           | {:template_not_found, String.t()}
+          | {:template_error, String.t()}
           | {:config_not_found, String.t()}
           | {:config_error, String.t()}
 
@@ -29,12 +30,11 @@ defmodule TimeInvoice.CLI do
   """
   @spec parse_args([String.t()]) :: {:ok, String.t()} | {:error, :missing_project}
   def parse_args(args) do
-    case OptionParser.parse(args, strict: [project: :string], aliases: [p: :project]) do
-      {opts, _, _} ->
-        case Keyword.fetch(opts, :project) do
-          {:ok, project} -> {:ok, project}
-          :error -> {:error, :missing_project}
-        end
+    {opts, _, _} = OptionParser.parse(args, strict: [project: :string], aliases: [p: :project])
+
+    case Keyword.fetch(opts, :project) do
+      {:ok, project} -> {:ok, project}
+      :error -> {:error, :missing_project}
     end
   end
 
@@ -113,13 +113,16 @@ defmodule TimeInvoice.CLI do
   end
 
   @spec render_template(String.t(), JsonParser.extracted_project(), Config.project_config()) ::
-          {:ok, String.t()} | {:error, {:template_not_found, String.t()}}
+          {:ok, String.t()}
+          | {:error, {:template_not_found, String.t()}}
+          | {:error, {:template_error, String.t()}}
   defp render_template(template_path, project_data, project_config) do
     invoice_date = Date.utc_today()
 
     case Renderer.render_file(template_path, project_data, project_config, invoice_date) do
       {:ok, rendered} -> {:ok, rendered}
       {:error, {:template_not_found, path}} -> {:error, {:template_not_found, path}}
+      {:error, {:template_error, message}} -> {:error, {:template_error, message}}
       {:error, {:file_error, _reason}} -> {:error, {:template_not_found, template_path}}
     end
   end
@@ -156,14 +159,19 @@ defmodule TimeInvoice.CLI do
     "error: config syntax error: #{message}"
   end
 
+  def format_error({:template_error, message}) do
+    "error: template syntax error: #{message}"
+  end
+
   @doc """
   Returns the exit code for a given result.
 
   Exit codes:
   - 0: Success
-  - 1: Project not found in config (or missing --project argument)
+  - 1: Project not found in config, config file not found, config syntax error,
+       or missing --project argument
   - 2: Project not found in JSON input
-  - 3: Template file not found
+  - 3: Template file not found or template syntax error
   - 4: Invalid JSON input
   """
   @spec exit_code(:ok | run_error()) :: non_neg_integer()
@@ -174,6 +182,7 @@ defmodule TimeInvoice.CLI do
   def exit_code({:config_error, _}), do: 1
   def exit_code({:project_not_in_json, _, _}), do: 2
   def exit_code({:template_not_found, _}), do: 3
+  def exit_code({:template_error, _}), do: 3
   def exit_code({:invalid_json, _}), do: 4
 
   @doc """

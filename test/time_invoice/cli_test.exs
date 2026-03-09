@@ -130,6 +130,34 @@ defmodule TimeInvoice.CLITest do
 
       assert {:error, :missing_project} = result
     end
+
+    test "returns error when config file not found" do
+      result = CLI.run(["--project", "acme"], @valid_json, "/nonexistent/config.exs")
+
+      assert {:error, {:config_not_found, "/nonexistent/config.exs"}} = result
+    end
+
+    test "returns error when template file not found", %{
+      config_path: config_path,
+      template_path: template_path
+    } do
+      File.rm!(template_path)
+
+      result = CLI.run(["--project", "acme"], @valid_json, config_path)
+
+      assert {:error, {:template_not_found, ^template_path}} = result
+    end
+
+    test "returns error for template syntax error", %{
+      config_path: config_path,
+      template_path: template_path
+    } do
+      File.write!(template_path, "<%= @unclosed")
+
+      result = CLI.run(["--project", "acme"], @valid_json, config_path)
+
+      assert {:error, {:template_error, _message}} = result
+    end
   end
 
   describe "format_error/1" do
@@ -175,6 +203,20 @@ defmodule TimeInvoice.CLITest do
       assert message =~ "config file not found"
       assert message =~ "/path/to/config.exs"
     end
+
+    test "formats config syntax error" do
+      message = CLI.format_error({:config_error, "unexpected token"})
+
+      assert message =~ "config syntax error"
+      assert message =~ "unexpected token"
+    end
+
+    test "formats template syntax error" do
+      message = CLI.format_error({:template_error, "missing closing tag"})
+
+      assert message =~ "template syntax error"
+      assert message =~ "missing closing tag"
+    end
   end
 
   describe "exit_code/1" do
@@ -200,6 +242,18 @@ defmodule TimeInvoice.CLITest do
 
     test "returns 1 for missing project argument" do
       assert CLI.exit_code(:missing_project) == 1
+    end
+
+    test "returns 1 for config not found" do
+      assert CLI.exit_code({:config_not_found, "/path"}) == 1
+    end
+
+    test "returns 1 for config syntax error" do
+      assert CLI.exit_code({:config_error, "error"}) == 1
+    end
+
+    test "returns 3 for template syntax error" do
+      assert CLI.exit_code({:template_error, "error"}) == 3
     end
   end
 end
