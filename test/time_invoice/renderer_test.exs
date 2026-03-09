@@ -160,6 +160,16 @@ defmodule TimeInvoice.RendererTest do
       assert {:error, {:template_not_found, ^template_path}} =
                Renderer.render_file(template_path, project_data, config, ~D[2026-03-09])
     end
+
+    @tag :tmp_dir
+    test "returns file_error for directory path", %{tmp_dir: tmp_dir} do
+      # Try to read a directory as a file
+      project_data = build_project_data()
+      config = []
+
+      assert {:error, {:file_error, :eisdir}} =
+               Renderer.render_file(tmp_dir, project_data, config, ~D[2026-03-09])
+    end
   end
 
   describe "edge cases" do
