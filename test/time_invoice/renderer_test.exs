@@ -62,7 +62,7 @@ defmodule TimeInvoice.RendererTest do
       assert result == "Total: $950.0"
     end
 
-    test "renders days list with iteration" do
+    test "renders days list with iteration and formatted dates" do
       template = """
       <%= for day <- @days do %>
       | <%= day.date %> | <%= day.hours %> |
@@ -77,12 +77,12 @@ defmodule TimeInvoice.RendererTest do
           ]
         )
 
-      config = []
+      config = [date_format: :eu]
 
       {:ok, result} = Renderer.render(template, project_data, config, ~D[2026-03-09])
 
-      assert result =~ "| 2026-01-02 | 3.5 |"
-      assert result =~ "| 2026-01-03 | 6.0 |"
+      assert result =~ "| 02-01-2026 | 3.5 |"
+      assert result =~ "| 03-01-2026 | 6.0 |"
     end
 
     test "renders custom config fields" do
@@ -95,14 +95,34 @@ defmodule TimeInvoice.RendererTest do
       assert result == "PO Number: PO-12345"
     end
 
-    test "renders invoice date" do
+    test "renders invoice date with eu format" do
       template = "Date: <%= @invoice_date %>"
       project_data = build_project_data()
-      config = []
+      config = [date_format: :eu]
 
       {:ok, result} = Renderer.render(template, project_data, config, ~D[2026-03-09])
 
-      assert result == "Date: 2026-03-09"
+      assert result == "Date: 09-03-2026"
+    end
+
+    test "renders invoice date with us format" do
+      template = "Date: <%= @invoice_date %>"
+      project_data = build_project_data()
+      config = [date_format: :us]
+
+      {:ok, result} = Renderer.render(template, project_data, config, ~D[2026-03-09])
+
+      assert result == "Date: 03-09-2026"
+    end
+
+    test "formats start_date and end_date" do
+      template = "Period: <%= @start_date %> - <%= @end_date %>"
+      project_data = build_project_data(start_date: ~D[2026-01-01], end_date: ~D[2026-01-31])
+      config = [date_format: :eu]
+
+      {:ok, result} = Renderer.render(template, project_data, config, ~D[2026-03-09])
+
+      assert result == "Period: 01-01-2026 - 31-01-2026"
     end
 
     test "returns error for invalid eex syntax" do
@@ -140,20 +160,37 @@ defmodule TimeInvoice.RendererTest do
       assert {:error, {:template_not_found, ^template_path}} =
                Renderer.render_file(template_path, project_data, config, ~D[2026-03-09])
     end
+  end
 
-    @tag :tmp_dir
-    test "expands tilde in template path", %{tmp_dir: tmp_dir} do
-      # Create a template in a subdirectory of tmp_dir
-      template_path = Path.join(tmp_dir, "test.md.eex")
-      File.write!(template_path, "Hello: <%= @project %>")
-
-      project_data = build_project_data(project: "acme")
+  describe "edge cases" do
+    test "handles empty days list" do
+      template = "Days: <%= length(@days) %>"
+      project_data = build_project_data(days: [], total_hours: 0)
       config = []
 
-      # Test with absolute path (we can't actually test ~ expansion without mocking home)
-      {:ok, result} = Renderer.render_file(template_path, project_data, config, ~D[2026-03-09])
+      {:ok, result} = Renderer.render(template, project_data, config, ~D[2026-03-09])
 
-      assert result == "Hello: acme"
+      assert result == "Days: 0"
+    end
+
+    test "handles zero total hours" do
+      template = "Total: <%= @currency %><%= @total_amount %>"
+      project_data = build_project_data(total_hours: 0)
+      config = [hourly_rate: 100.0, currency: "$"]
+
+      {:ok, result} = Renderer.render(template, project_data, config, ~D[2026-03-09])
+
+      assert result == "Total: $0.0"
+    end
+
+    test "defaults to eu date format when not specified" do
+      template = "Date: <%= @invoice_date %>"
+      project_data = build_project_data()
+      config = []
+
+      {:ok, result} = Renderer.render(template, project_data, config, ~D[2026-03-09])
+
+      assert result == "Date: 09-03-2026"
     end
   end
 
