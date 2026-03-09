@@ -1,21 +1,14 @@
 # TimeInvoice
 
-**TODO: Add description**
+Takes JSON output from [Time Watcher](https://codeberg.org/ellyxir/time_watcher) containing
+daily work hours per project and generates a markdown invoice. Pipe to pandoc for PDF.
 
-## Installation
+It doesn't need to work with Time Watcher, you could just create the JSON needed and it will
+create the invoice just fine.
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `time_invoice` to your list of dependencies in `mix.exs`:
-
-```elixir
-def deps do
-  [
-    {:time_invoice, "~> 0.1.0"}
-  ]
-end
+```sh
+tw report --json --from 2026-01-01 --to 2026-01-31 | ti --project my_client | pandoc -o invoice.pdf
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/time_invoice>.
+More info to come once it's built!
 
