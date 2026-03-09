@@ -21,6 +21,28 @@ defmodule TimeInvoice.Renderer do
   @type project_config :: keyword()
 
   @doc """
+  Renders a template file with invoice data.
+
+  Loads a template from the given path (supports `~` expansion),
+  then renders it with merged variables from project data and config.
+
+  Returns `{:ok, rendered_string}` on success, or
+  `{:error, {:template_not_found, path}}` if the file doesn't exist.
+  """
+  @spec render_file(String.t(), project_data(), project_config(), Date.t()) ::
+          {:ok, String.t()} | {:error, {:template_not_found, String.t()}}
+  def render_file(path, project_data, config, invoice_date) do
+    expanded_path = Path.expand(path)
+
+    if File.exists?(expanded_path) do
+      template = File.read!(expanded_path)
+      render(template, project_data, config, invoice_date)
+    else
+      {:error, {:template_not_found, path}}
+    end
+  end
+
+  @doc """
   Renders a template string with invoice data.
 
   Takes a template string, project data from JSON, and project config.

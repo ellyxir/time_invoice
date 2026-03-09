@@ -106,6 +106,46 @@ defmodule TimeInvoice.RendererTest do
     end
   end
 
+  describe "render_file/4" do
+    @tag :tmp_dir
+    test "loads and renders template from file", %{tmp_dir: tmp_dir} do
+      template_path = Path.join(tmp_dir, "test.md.eex")
+      File.write!(template_path, "Invoice: <%= @invoice_number %>")
+
+      project_data = build_project_data()
+      config = [hourly_rate: 100.0, currency: "$"]
+
+      {:ok, result} = Renderer.render_file(template_path, project_data, config, ~D[2026-03-09])
+
+      assert result == "Invoice: INV-26-03-09"
+    end
+
+    @tag :tmp_dir
+    test "returns error when template file not found", %{tmp_dir: tmp_dir} do
+      template_path = Path.join(tmp_dir, "nonexistent.md.eex")
+      project_data = build_project_data()
+      config = []
+
+      assert {:error, {:template_not_found, ^template_path}} =
+               Renderer.render_file(template_path, project_data, config, ~D[2026-03-09])
+    end
+
+    @tag :tmp_dir
+    test "expands tilde in template path", %{tmp_dir: tmp_dir} do
+      # Create a template in a subdirectory of tmp_dir
+      template_path = Path.join(tmp_dir, "test.md.eex")
+      File.write!(template_path, "Hello: <%= @project %>")
+
+      project_data = build_project_data(project: "acme")
+      config = []
+
+      # Test with absolute path (we can't actually test ~ expansion without mocking home)
+      {:ok, result} = Renderer.render_file(template_path, project_data, config, ~D[2026-03-09])
+
+      assert result == "Hello: acme"
+    end
+  end
+
   defp build_project_data(overrides \\ []) do
     defaults = %{
       project: "acme",
