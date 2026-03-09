@@ -56,13 +56,21 @@ defmodule TimeInvoice.JsonParser do
     end
   end
 
-  @spec parse_date(String.t(), String.t()) :: {:ok, Date.t()} | {:error, String.t()}
-  defp parse_date(date_string, field) do
+  @spec parse_date(term(), String.t()) :: {:ok, Date.t()} | {:error, String.t()}
+  defp parse_date(date_string, field) when is_binary(date_string) do
     case Date.from_iso8601(date_string) do
       {:ok, date} -> {:ok, date}
       {:error, _} -> {:error, "invalid date format for #{field}: expected YYYY-MM-DD"}
     end
   end
+
+  defp parse_date(_, field) do
+    {:error, "invalid date format for #{field}: expected YYYY-MM-DD"}
+  end
+
+  @spec validate_number(term(), String.t()) :: {:ok, number()} | {:error, String.t()}
+  defp validate_number(value, _context) when is_number(value), do: {:ok, value}
+  defp validate_number(_, context), do: {:error, "#{context} must be a number"}
 
   @spec parse_projects(map()) :: {:ok, %{String.t() => project()}} | {:error, String.t()}
   defp parse_projects(projects_raw) when is_map(projects_raw) do
@@ -80,7 +88,8 @@ defmodule TimeInvoice.JsonParser do
   @spec parse_project(String.t(), map()) :: {:ok, project()} | {:error, String.t()}
   defp parse_project(name, data) when is_map(data) do
     with {:ok, days_raw} <- get_project_field(data, "days", name),
-         {:ok, total_hours} <- get_project_field(data, "total_hours", name),
+         {:ok, total_hours_raw} <- get_project_field(data, "total_hours", name),
+         {:ok, total_hours} <- validate_number(total_hours_raw, "project #{name}: total_hours"),
          {:ok, days} <- parse_days(days_raw, name) do
       {:ok, %{days: days, total_hours: total_hours}}
     end
@@ -117,8 +126,9 @@ defmodule TimeInvoice.JsonParser do
   @spec parse_day(map(), String.t(), non_neg_integer()) :: {:ok, day()} | {:error, String.t()}
   defp parse_day(day_raw, project_name, index) when is_map(day_raw) do
     with {:ok, date_string} <- get_day_field(day_raw, "date", project_name, index),
-         {:ok, hours} <- get_day_field(day_raw, "hours", project_name, index),
-         {:ok, date} <- parse_date(date_string, "day #{index} date in #{project_name}") do
+         {:ok, hours_raw} <- get_day_field(day_raw, "hours", project_name, index),
+         {:ok, date} <- parse_date(date_string, "day #{index} date in #{project_name}"),
+         {:ok, hours} <- validate_number(hours_raw, "project #{project_name}: day #{index} hours") do
       {:ok, %{date: date, hours: hours}}
     end
   end

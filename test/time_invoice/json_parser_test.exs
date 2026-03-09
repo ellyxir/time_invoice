@@ -153,5 +153,116 @@ defmodule TimeInvoice.JsonParserTest do
       assert {:error, reason} = JsonParser.parse(json)
       assert reason =~ "total_hours"
     end
+
+    test "returns error when JSON root is an array" do
+      json = ~s([1, 2, 3])
+
+      assert {:error, reason} = JsonParser.parse(json)
+      assert reason =~ "expected object"
+    end
+
+    test "returns error when projects is not an object" do
+      json = ~s({"start_date": "2026-01-01", "end_date": "2026-01-31", "projects": []})
+
+      assert {:error, reason} = JsonParser.parse(json)
+      assert reason =~ "projects must be an object"
+    end
+
+    test "returns error when project value is not an object" do
+      json =
+        ~s({"start_date": "2026-01-01", "end_date": "2026-01-31", "projects": {"acme": "invalid"}})
+
+      assert {:error, reason} = JsonParser.parse(json)
+      assert reason =~ "project acme must be an object"
+    end
+
+    test "returns error when days is not an array" do
+      json =
+        ~s({"start_date": "2026-01-01", "end_date": "2026-01-31", "projects": {"acme": {"days": "invalid", "total_hours": 5.0}}})
+
+      assert {:error, reason} = JsonParser.parse(json)
+      assert reason =~ "days must be an array"
+    end
+
+    test "returns error when day is not an object" do
+      json =
+        ~s({"start_date": "2026-01-01", "end_date": "2026-01-31", "projects": {"acme": {"days": ["not an object"], "total_hours": 5.0}}})
+
+      assert {:error, reason} = JsonParser.parse(json)
+      assert reason =~ "day 0 must be an object"
+    end
+
+    test "returns error when day is missing date" do
+      json =
+        ~s({"start_date": "2026-01-01", "end_date": "2026-01-31", "projects": {"acme": {"days": [{"hours": 5.0}], "total_hours": 5.0}}})
+
+      assert {:error, reason} = JsonParser.parse(json)
+      assert reason =~ "day 0 missing date"
+    end
+
+    test "returns error when day is missing hours" do
+      json =
+        ~s({"start_date": "2026-01-01", "end_date": "2026-01-31", "projects": {"acme": {"days": [{"date": "2026-01-02"}], "total_hours": 5.0}}})
+
+      assert {:error, reason} = JsonParser.parse(json)
+      assert reason =~ "day 0 missing hours"
+    end
+
+    test "returns error when day has invalid date format" do
+      json =
+        ~s({"start_date": "2026-01-01", "end_date": "2026-01-31", "projects": {"acme": {"days": [{"date": "bad-date", "hours": 5.0}], "total_hours": 5.0}}})
+
+      assert {:error, reason} = JsonParser.parse(json)
+      assert reason =~ "invalid date"
+    end
+
+    test "returns error when hours is not a number" do
+      json =
+        ~s({"start_date": "2026-01-01", "end_date": "2026-01-31", "projects": {"acme": {"days": [{"date": "2026-01-02", "hours": "five"}], "total_hours": 5.0}}})
+
+      assert {:error, reason} = JsonParser.parse(json)
+      assert reason =~ "hours must be a number"
+    end
+
+    test "returns error when total_hours is not a number" do
+      json =
+        ~s({"start_date": "2026-01-01", "end_date": "2026-01-31", "projects": {"acme": {"days": [], "total_hours": "invalid"}}})
+
+      assert {:error, reason} = JsonParser.parse(json)
+      assert reason =~ "total_hours must be a number"
+    end
+
+    test "returns error when date is not a string" do
+      json = ~s({"start_date": 20260101, "end_date": "2026-01-31", "projects": {}})
+
+      assert {:error, reason} = JsonParser.parse(json)
+      assert reason =~ "invalid date"
+    end
+  end
+
+  describe "parse/1 edge cases" do
+    test "parses empty projects map" do
+      json = ~s({"start_date": "2026-01-01", "end_date": "2026-01-31", "projects": {}})
+
+      assert {:ok, result} = JsonParser.parse(json)
+      assert result.projects == %{}
+    end
+
+    test "parses project with empty days array" do
+      json =
+        ~s({"start_date": "2026-01-01", "end_date": "2026-01-31", "projects": {"acme": {"days": [], "total_hours": 0}}})
+
+      assert {:ok, result} = JsonParser.parse(json)
+      assert result.projects["acme"].days == []
+      assert result.projects["acme"].total_hours == 0
+    end
+
+    test "accepts integer hours" do
+      json =
+        ~s({"start_date": "2026-01-01", "end_date": "2026-01-31", "projects": {"acme": {"days": [{"date": "2026-01-02", "hours": 8}], "total_hours": 8}}})
+
+      assert {:ok, result} = JsonParser.parse(json)
+      assert result.projects["acme"].days |> hd() |> Map.get(:hours) == 8
+    end
   end
 end
