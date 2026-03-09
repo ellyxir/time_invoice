@@ -45,6 +45,35 @@ defmodule TimeInvoice.CLITest do
     test "ignores extra arguments" do
       assert {:ok, "acme"} = CLI.parse_args(["--project", "acme", "--extra", "stuff"])
     end
+
+    test "parses --version flag" do
+      assert :version = CLI.parse_args(["--version"])
+    end
+
+    test "parses -V short form for version" do
+      assert :version = CLI.parse_args(["-V"])
+    end
+
+    test "parses --help flag" do
+      assert :help = CLI.parse_args(["--help"])
+    end
+
+    test "parses -h short form for help" do
+      assert :help = CLI.parse_args(["-h"])
+    end
+
+    test "version takes precedence over project" do
+      assert :version = CLI.parse_args(["--version", "--project", "acme"])
+    end
+
+    test "version takes precedence over help" do
+      assert :version = CLI.parse_args(["--version", "--help"])
+      assert :version = CLI.parse_args(["--help", "--version"])
+    end
+
+    test "help takes precedence over project" do
+      assert :help = CLI.parse_args(["--help", "--project", "acme"])
+    end
   end
 
   describe "run/3" do
@@ -251,6 +280,49 @@ defmodule TimeInvoice.CLITest do
 
       assert message =~ "template syntax error"
       assert message =~ "missing closing tag"
+    end
+  end
+
+  describe "version/0" do
+    test "returns version string from application" do
+      version = CLI.version()
+
+      assert version =~ ~r/^ti \d+\.\d+\.\d+$/
+    end
+  end
+
+  describe "help/0" do
+    test "includes usage information" do
+      help = CLI.help()
+
+      assert help =~ "ti --project <name>"
+    end
+
+    test "includes description of --project flag" do
+      help = CLI.help()
+
+      assert help =~ "--project"
+      assert help =~ "-p"
+    end
+
+    test "includes description of --help flag" do
+      help = CLI.help()
+
+      assert help =~ "--help"
+      assert help =~ "-h"
+    end
+
+    test "includes description of --version flag" do
+      help = CLI.help()
+
+      assert help =~ "--version"
+      assert help =~ "-V"
+    end
+
+    test "includes link to repository" do
+      help = CLI.help()
+
+      assert help =~ "codeberg.org/ellyxir/time_invoice"
     end
   end
 
