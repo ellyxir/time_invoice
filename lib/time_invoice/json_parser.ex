@@ -4,16 +4,25 @@ defmodule TimeInvoice.JsonParser do
   """
 
   @typedoc "A single day of work with date and hours"
-  @type day :: %{date: Date.t(), hours: float()}
+  @type day :: %{date: Date.t(), hours: number()}
 
   @typedoc "Project data containing days worked and total hours"
-  @type project :: %{days: [day()], total_hours: float()}
+  @type project :: %{days: [day()], total_hours: number()}
 
   @typedoc "Parsed report containing date range and projects"
   @type report :: %{
           start_date: Date.t(),
           end_date: Date.t(),
           projects: %{String.t() => project()}
+        }
+
+  @typedoc "Extracted project data with date range included"
+  @type extracted_project :: %{
+          project: String.t(),
+          start_date: Date.t(),
+          end_date: Date.t(),
+          days: [day()],
+          total_hours: number()
         }
 
   @doc """
@@ -29,6 +38,33 @@ defmodule TimeInvoice.JsonParser do
          {:ok, projects_raw} <- get_required_field(decoded, "projects"),
          {:ok, projects} <- parse_projects(projects_raw) do
       {:ok, %{start_date: start_date, end_date: end_date, projects: projects}}
+    end
+  end
+
+  @doc """
+  Extracts a specific project's data from a parsed report.
+
+  Returns the project data along with the report's date range.
+  Returns `{:error, {:project_not_found, project_name, available_projects}}`
+  if the project does not exist.
+  """
+  @spec extract_project(report(), String.t()) ::
+          {:ok, extracted_project()} | {:error, {:project_not_found, String.t(), [String.t()]}}
+  def extract_project(report, project_name) do
+    case Map.fetch(report.projects, project_name) do
+      {:ok, project_data} ->
+        {:ok,
+         %{
+           project: project_name,
+           start_date: report.start_date,
+           end_date: report.end_date,
+           days: project_data.days,
+           total_hours: project_data.total_hours
+         }}
+
+      :error ->
+        available = Map.keys(report.projects)
+        {:error, {:project_not_found, project_name, available}}
     end
   end
 
