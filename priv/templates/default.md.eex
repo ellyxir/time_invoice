@@ -1,0 +1,39 @@
+# Invoice <%= @invoice_number %>
+
+**Date:** <%= @invoice_date %>
+
+---
+
+**From:**
+<%= @business_name %>
+<%= @business_address %>
+<%= @business_email %>
+
+**To:**
+<%= @client_name %>
+<%= @client_address %>
+
+---
+
+## Services Rendered
+
+**Period:** <%= @start_date %> - <%= @end_date %>
+
+| Date | Hours |
+|------|-------|
+<%= for day <- @days do %>| <%= day.date %> | <%= day.hours %> |
+<% end %>
+
+---
+
+## Summary
+
+| Description | Amount |
+|-------------|--------|
+| Total Hours | <%= @total_hours %> |
+| Hourly Rate | <%= @currency %><%= @hourly_rate %> |
+| **Total Due** | **<%= @currency %><%= @total_amount %>** |
+
+---
+
+Thank you for your business!
