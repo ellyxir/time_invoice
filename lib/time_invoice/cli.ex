@@ -123,4 +123,56 @@ defmodule TimeInvoice.CLI do
       {:error, {:file_error, _reason}} -> {:error, {:template_not_found, template_path}}
     end
   end
+
+  @doc """
+  Formats an error for display on stderr.
+  """
+  @spec format_error(run_error()) :: String.t()
+  def format_error(:missing_project) do
+    "error: missing required argument: --project\nusage: ti --project <name>"
+  end
+
+  def format_error({:invalid_json, message}) do
+    "error: invalid JSON input: #{message}"
+  end
+
+  def format_error({:project_not_in_config, project, available}) do
+    "error: project '#{project}' not found in config\navailable projects: #{Enum.join(available, ", ")}"
+  end
+
+  def format_error({:project_not_in_json, project, available}) do
+    "error: project '#{project}' not found in JSON input\navailable projects: #{Enum.join(available, ", ")}"
+  end
+
+  def format_error({:template_not_found, path}) do
+    "error: template not found: #{path}"
+  end
+
+  def format_error({:config_not_found, path}) do
+    "error: config file not found: #{path}"
+  end
+
+  def format_error({:config_error, message}) do
+    "error: config syntax error: #{message}"
+  end
+
+  @doc """
+  Returns the exit code for a given result.
+
+  Exit codes:
+  - 0: Success
+  - 1: Project not found in config (or missing --project argument)
+  - 2: Project not found in JSON input
+  - 3: Template file not found
+  - 4: Invalid JSON input
+  """
+  @spec exit_code(:ok | run_error()) :: non_neg_integer()
+  def exit_code(:ok), do: 0
+  def exit_code(:missing_project), do: 1
+  def exit_code({:project_not_in_config, _, _}), do: 1
+  def exit_code({:config_not_found, _}), do: 1
+  def exit_code({:config_error, _}), do: 1
+  def exit_code({:project_not_in_json, _, _}), do: 2
+  def exit_code({:template_not_found, _}), do: 3
+  def exit_code({:invalid_json, _}), do: 4
 end

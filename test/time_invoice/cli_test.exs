@@ -131,4 +131,75 @@ defmodule TimeInvoice.CLITest do
       assert {:error, :missing_project} = result
     end
   end
+
+  describe "format_error/1" do
+    test "formats missing project error" do
+      message = CLI.format_error(:missing_project)
+
+      assert message =~ "missing required argument: --project"
+      assert message =~ "ti --project <name>"
+    end
+
+    test "formats invalid json error" do
+      message = CLI.format_error({:invalid_json, "unexpected token"})
+
+      assert message =~ "invalid JSON input"
+      assert message =~ "unexpected token"
+    end
+
+    test "formats project not in config error" do
+      message = CLI.format_error({:project_not_in_config, "acme", ["foo", "bar"]})
+
+      assert message =~ "project 'acme' not found in config"
+      assert message =~ "foo"
+      assert message =~ "bar"
+    end
+
+    test "formats project not in json error" do
+      message = CLI.format_error({:project_not_in_json, "acme", ["other"]})
+
+      assert message =~ "project 'acme' not found in JSON input"
+      assert message =~ "other"
+    end
+
+    test "formats template not found error" do
+      message = CLI.format_error({:template_not_found, "/path/to/template.eex"})
+
+      assert message =~ "template not found"
+      assert message =~ "/path/to/template.eex"
+    end
+
+    test "formats config not found error" do
+      message = CLI.format_error({:config_not_found, "/path/to/config.exs"})
+
+      assert message =~ "config file not found"
+      assert message =~ "/path/to/config.exs"
+    end
+  end
+
+  describe "exit_code/1" do
+    test "returns 0 for success" do
+      assert CLI.exit_code(:ok) == 0
+    end
+
+    test "returns 1 for project not in config" do
+      assert CLI.exit_code({:project_not_in_config, "acme", []}) == 1
+    end
+
+    test "returns 2 for project not in json" do
+      assert CLI.exit_code({:project_not_in_json, "acme", []}) == 2
+    end
+
+    test "returns 3 for template not found" do
+      assert CLI.exit_code({:template_not_found, "/path"}) == 3
+    end
+
+    test "returns 4 for invalid json" do
+      assert CLI.exit_code({:invalid_json, "error"}) == 4
+    end
+
+    test "returns 1 for missing project argument" do
+      assert CLI.exit_code(:missing_project) == 1
+    end
+  end
 end
