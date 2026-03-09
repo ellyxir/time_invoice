@@ -172,6 +172,91 @@ defmodule TimeInvoice.RendererTest do
     end
   end
 
+  describe "decimal formatting" do
+    test "rounds total_hours to 2 decimal places" do
+      template = "Hours: <%= @total_hours %>"
+      project_data = build_project_data(total_hours: 7.174166666666666)
+      config = []
+
+      {:ok, result} = Renderer.render(template, project_data, config, ~D[2026-03-09])
+
+      assert result == "Hours: 7.17"
+    end
+
+    test "rounds total_amount to 2 decimal places" do
+      template = "Amount: <%= @total_amount %>"
+      # 7.174166666666666 * 100 = 717.4166666666666
+      project_data = build_project_data(total_hours: 7.174166666666666)
+      config = [hourly_rate: 100.0]
+
+      {:ok, result} = Renderer.render(template, project_data, config, ~D[2026-03-09])
+
+      assert result == "Amount: 717.42"
+    end
+
+    test "rounds hours in days list to 2 decimal places" do
+      template = """
+      <%= for day <- @days do %>| <%= day.hours %> |
+      <% end %>
+      """
+
+      project_data =
+        build_project_data(
+          days: [
+            %{date: ~D[2026-01-02], hours: 3.333333333333333},
+            %{date: ~D[2026-01-03], hours: 2.166666666666667}
+          ]
+        )
+
+      config = []
+
+      {:ok, result} = Renderer.render(template, project_data, config, ~D[2026-03-09])
+
+      assert result =~ "| 3.33 |"
+      assert result =~ "| 2.17 |"
+    end
+
+    test "rounds up at .005" do
+      template = "Hours: <%= @total_hours %>"
+      project_data = build_project_data(total_hours: 1.125)
+      config = []
+
+      {:ok, result} = Renderer.render(template, project_data, config, ~D[2026-03-09])
+
+      assert result == "Hours: 1.13"
+    end
+
+    test "handles values already within 2 decimal places" do
+      template = "Hours: <%= @total_hours %>"
+      project_data = build_project_data(total_hours: 5.10)
+      config = []
+
+      {:ok, result} = Renderer.render(template, project_data, config, ~D[2026-03-09])
+
+      assert result == "Hours: 5.1"
+    end
+
+    test "handles integer input" do
+      template = "Hours: <%= @total_hours %>"
+      project_data = build_project_data(total_hours: 5)
+      config = []
+
+      {:ok, result} = Renderer.render(template, project_data, config, ~D[2026-03-09])
+
+      assert result == "Hours: 5.0"
+    end
+
+    test "rounds very small decimals" do
+      template = "Hours: <%= @total_hours %>"
+      project_data = build_project_data(total_hours: 0.001)
+      config = []
+
+      {:ok, result} = Renderer.render(template, project_data, config, ~D[2026-03-09])
+
+      assert result == "Hours: 0.0"
+    end
+  end
+
   describe "edge cases" do
     test "handles empty days list" do
       template = "Days: <%= length(@days) %>"

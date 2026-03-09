@@ -4,7 +4,9 @@ defmodule TimeInvoice.Renderer do
 
   Merges variables from project data, configuration, and computed values
   to produce the final invoice output. Dates are formatted according to
-  the `date_format` config option (`:eu` or `:us`).
+  the `date_format` config option (`:eu` or `:us`). Numeric values
+  (`total_hours`, `total_amount`, and hours in each day) are rounded to
+  2 decimal places for display.
   """
 
   alias TimeInvoice.DateFormat
@@ -82,7 +84,7 @@ defmodule TimeInvoice.Renderer do
 
     formatted_days =
       Enum.map(project_data.days, fn day ->
-        %{date: DateFormat.format(day.date, date_format), hours: day.hours}
+        %{date: DateFormat.format(day.date, date_format), hours: round_decimal(day.hours)}
       end)
 
     # Start with config values (all fields available in template)
@@ -93,13 +95,16 @@ defmodule TimeInvoice.Renderer do
       start_date: DateFormat.format(project_data.start_date, date_format),
       end_date: DateFormat.format(project_data.end_date, date_format),
       days: formatted_days,
-      total_hours: project_data.total_hours
+      total_hours: round_decimal(project_data.total_hours)
     )
     # Add computed values
     |> Keyword.merge(
       invoice_number: invoice_number,
       invoice_date: DateFormat.format(invoice_date, date_format),
-      total_amount: total_amount
+      total_amount: round_decimal(total_amount)
     )
   end
+
+  @spec round_decimal(number()) :: float()
+  defp round_decimal(value), do: Float.round(value * 1.0, 2)
 end
