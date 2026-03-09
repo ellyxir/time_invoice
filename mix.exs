@@ -8,7 +8,17 @@ defmodule TimeInvoice.MixProject do
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      dialyzer: [plt_add_apps: [:mix, :eex]]
+      dialyzer: [plt_add_apps: [:mix, :eex]],
+      releases: releases()
+    ]
+  end
+
+  defp releases do
+    [
+      time_invoice: [
+        steps: [:assemble],
+        overlays: ["rel/overlays"]
+      ]
     ]
   end
 
