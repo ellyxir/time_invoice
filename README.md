@@ -12,6 +12,12 @@ tw report --json --from 2026-01-01 --to 2026-01-31 | ti --project my_client | pa
 
 ## Installation
 
+### Nix
+
+```sh
+nix profile install git+https://codeberg.org/ellyxir/time_invoice
+```
+
 ### From source
 
 Requires Elixir 1.18+.
