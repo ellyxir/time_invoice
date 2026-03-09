@@ -158,6 +158,41 @@ defmodule TimeInvoice.CLITest do
 
       assert {:error, {:template_error, _message}} = result
     end
+
+    test "uses bundled default template when template is :default" do
+      config_dir = Path.join(System.tmp_dir!(), "default_tpl_#{:rand.uniform(100_000)}")
+      File.mkdir_p!(config_dir)
+      config_path = Path.join(config_dir, "config.exs")
+
+      config_content = """
+      import Config
+
+      config :time_invoice, :projects,
+        acme: [
+          template: :default,
+          business_name: "Test LLC",
+          business_address: "123 Test St",
+          business_email: "test@example.com",
+          client_name: "Acme Corp",
+          client_address: "456 Acme Way",
+          hourly_rate: 100.0,
+          currency: "$"
+        ]
+      """
+
+      File.write!(config_path, config_content)
+
+      on_exit(fn -> File.rm_rf!(config_dir) end)
+
+      result = CLI.run(["--project", "acme"], @valid_json, config_path)
+
+      assert {:ok, output} = result
+      assert output =~ "Invoice INV-"
+      assert output =~ "Test LLC"
+      assert output =~ "Acme Corp"
+      assert output =~ "Total Hours | 9.5"
+      assert output =~ "Hourly Rate | $100.0"
+    end
   end
 
   describe "format_error/1" do

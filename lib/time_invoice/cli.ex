@@ -14,6 +14,7 @@ defmodule TimeInvoice.CLI do
   alias TimeInvoice.Config
   alias TimeInvoice.JsonParser
   alias TimeInvoice.Renderer
+  alias TimeInvoice.Template
 
   @typedoc "Error types returned by run/3"
   @type run_error ::
@@ -111,6 +112,7 @@ defmodule TimeInvoice.CLI do
           {:ok, String.t()} | {:error, {:template_not_found, String.t()}}
   defp get_template_path(project_config) do
     case Keyword.fetch(project_config, :template) do
+      {:ok, :default} -> {:ok, Template.default_path()}
       {:ok, path} -> {:ok, path}
       :error -> {:error, {:template_not_found, "no template configured"}}
     end
