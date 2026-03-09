@@ -28,19 +28,60 @@ defmodule TimeInvoice.CLI do
           | {:config_error, String.t()}
 
   @doc """
-  Parses command-line arguments to extract the project name.
+  Parses command-line arguments.
 
-  Returns `{:ok, project_name}` when `--project` or `-p` is provided,
-  or `{:error, :missing_project}` otherwise.
+  Returns:
+  - `:version` when `--version` or `-v` is provided
+  - `:help` when `--help` or `-h` is provided
+  - `{:ok, project_name}` when `--project` or `-p` is provided
+  - `{:error, :missing_project}` otherwise
   """
-  @spec parse_args([String.t()]) :: {:ok, String.t()} | {:error, :missing_project}
+  @spec parse_args([String.t()]) ::
+          :version | :help | {:ok, String.t()} | {:error, :missing_project}
   def parse_args(args) do
-    {opts, _, _} = OptionParser.parse(args, strict: [project: :string], aliases: [p: :project])
+    {opts, _, _} =
+      OptionParser.parse(args,
+        strict: [project: :string, version: :boolean, help: :boolean],
+        aliases: [p: :project, V: :version, h: :help]
+      )
 
-    case Keyword.fetch(opts, :project) do
-      {:ok, project} -> {:ok, project}
-      :error -> {:error, :missing_project}
+    cond do
+      Keyword.get(opts, :version) -> :version
+      Keyword.get(opts, :help) -> :help
+      Keyword.has_key?(opts, :project) -> {:ok, Keyword.fetch!(opts, :project)}
+      true -> {:error, :missing_project}
     end
+  end
+
+  @doc """
+  Returns the version string for display.
+  """
+  @spec version() :: String.t()
+  def version do
+    vsn = Application.spec(:time_invoice, :vsn) |> to_string()
+    "ti #{vsn}"
+  end
+
+  @doc """
+  Returns the help text for display.
+  """
+  @spec help() :: String.t()
+  def help do
+    """
+    ti - generate markdown invoices from timewatcher JSON
+
+    usage: ti --project <name>
+
+    options:
+      -p, --project <name>  project name (must match config and JSON)
+      -h, --help            show this help message
+      -V, --version         show version
+
+    reads JSON from stdin, writes markdown to stdout.
+
+    configuration: ~/.config/time_invoice/config.exs
+    repository: https://codeberg.org/ellyxir/time_invoice
+    """
   end
 
   @doc """
@@ -194,11 +235,28 @@ defmodule TimeInvoice.CLI do
   @doc """
   Main entry point for the CLI.
 
-  Reads JSON from stdin, runs the pipeline, outputs to stdout on success
-  or stderr on error, and halts with the appropriate exit code.
+  Handles `--version` and `--help` flags immediately, otherwise reads JSON
+  from stdin, runs the pipeline, outputs to stdout on success or stderr on
+  error, and halts with the appropriate exit code.
   """
   @spec main([String.t()]) :: no_return()
   def main(args) do
+    case parse_args(args) do
+      :version ->
+        IO.puts(version())
+        System.halt(0)
+
+      :help ->
+        IO.write(help())
+        System.halt(0)
+
+      _ ->
+        run_pipeline(args)
+    end
+  end
+
+  @spec run_pipeline([String.t()]) :: no_return()
+  defp run_pipeline(args) do
     json_input = IO.read(:stdio, :eof)
     config_path = Config.config_path()
 
