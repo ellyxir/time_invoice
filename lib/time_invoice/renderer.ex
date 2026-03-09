@@ -29,12 +29,14 @@ defmodule TimeInvoice.Renderer do
   then renders it with merged variables from project data and config.
 
   Returns `{:ok, rendered_string}` on success, or
-  `{:error, {:template_not_found, path}}` if the file doesn't exist, or
+  `{:error, {:template_not_found, path}}` if the file doesn't exist,
+  `{:error, {:template_error, message}}` on EEx syntax errors, or
   `{:error, {:file_error, reason}}` for other file read errors.
   """
   @spec render_file(String.t(), project_data(), project_config(), Date.t()) ::
           {:ok, String.t()}
           | {:error, {:template_not_found, String.t()}}
+          | {:error, {:template_error, String.t()}}
           | {:error, {:file_error, atom()}}
   def render_file(path, project_data, config, invoice_date) do
     expanded_path = Path.expand(path)
