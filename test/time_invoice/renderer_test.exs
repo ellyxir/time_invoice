@@ -104,6 +104,17 @@ defmodule TimeInvoice.RendererTest do
 
       assert result == "Date: 2026-03-09"
     end
+
+    test "returns error for invalid eex syntax" do
+      template = "Invoice: <%= @invoice_number"
+      project_data = build_project_data()
+      config = []
+
+      assert {:error, {:template_error, message}} =
+               Renderer.render(template, project_data, config, ~D[2026-03-09])
+
+      assert message =~ "expected closing"
+    end
   end
 
   describe "render_file/4" do

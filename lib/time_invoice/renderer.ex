@@ -48,14 +48,18 @@ defmodule TimeInvoice.Renderer do
   Takes a template string, project data from JSON, and project config.
   The `invoice_date` parameter sets the date used for invoice number generation.
 
-  Returns `{:ok, rendered_string}` on success.
+  Returns `{:ok, rendered_string}` on success, or
+  `{:error, {:template_error, message}}` on EEx syntax errors.
   """
   @spec render(String.t(), project_data(), project_config(), Date.t()) ::
-          {:ok, String.t()} | {:error, term()}
+          {:ok, String.t()} | {:error, {:template_error, String.t()}}
   def render(template, project_data, config, invoice_date) do
     assigns = build_assigns(project_data, config, invoice_date)
     rendered = EEx.eval_string(template, assigns: assigns)
     {:ok, rendered}
+  rescue
+    e in EEx.SyntaxError ->
+      {:error, {:template_error, Exception.message(e)}}
   end
 
   @spec build_assigns(project_data(), project_config(), Date.t()) :: keyword()
